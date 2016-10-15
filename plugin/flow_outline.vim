@@ -6,7 +6,7 @@ vim_flow_outline_item = collections.namedtuple('vim_flow_outline_item', [
   'line', 'loc', 'prefix', 'kind'
 ])
 
-vim_flow_outline_find_loc = re.compile(r'\((\d+) line (\d+) col\)$')
+vim_flow_outline_find_loc = re.compile(r'\((\d+):(\d+)\)$')
 
 def vim_flow_outline_process(node):
 
@@ -18,9 +18,9 @@ def vim_flow_outline_process(node):
       kind = 'import type' if node['importKind'] == 'type' else 'import'
       for spec in node['specifiers']:
         if spec['type'] == 'ImportDefaultSpecifier':
-          add('import', node['loc'], prefix, kind, spec['id']['name'])
+          add('import', spec['loc'], prefix, kind, spec['id']['name'])
         elif spec['type'] == 'ImportSpecifier':
-          add('import', node['loc'], prefix, kind, '{%s}' % spec['id']['name'])
+          add('import', spec['loc'], prefix, kind, '{%s}' % spec['id']['name'])
     elif node['type'] == 'TypeAlias':
       add('type alias', node['loc'], prefix, 'type', node['id']['name'])
     elif node['type'] == 'ClassDeclaration':
@@ -30,7 +30,10 @@ def vim_flow_outline_process(node):
       for item in node['body']['body']:
         process(item, prefix=prefix + ['class', name])
     elif node['type'] == 'MethodDefinition':
-      add('method', node['key']['loc'], prefix, node['key']['name'] + '(...)')
+      name = node['key']['name'] + '(...)'
+      if node['static']:
+        name = 'static ' + name
+      add('method', node['key']['loc'], prefix, name)
     elif node['type'] == 'FunctionDeclaration':
       add('function', node['loc'], prefix, 'function', node['id']['name'] + '(...)')
     elif node['type'] == 'VariableDeclaration':
@@ -48,7 +51,7 @@ def vim_flow_outline_process(node):
   return outline
 
 def vim_flow_outline_fortmat_loc(loc):
-  return '(%d line %d col)' % (
+  return '(%d:%d)' % (
     loc['start']['line'],
     loc['start']['column'] + 1)
 
