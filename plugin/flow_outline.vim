@@ -6,13 +6,11 @@ vim_flow_outline_item = collections.namedtuple('vim_flow_outline_item', [
   'line', 'loc', 'prefix', 'kind'
 ])
 
-
 vim_flow_outline_find_loc = re.compile(r'\((\d+) line (\d+) col\)$')
 
 def vim_flow_outline_process(node):
 
   def add(kind, loc, prefix, *line):
-    line = ' '.join(prefix + list(line))
     outline.append(vim_flow_outline_item(list(line), loc, prefix, kind))
 
   def process(node, prefix=[]):
@@ -56,10 +54,10 @@ def vim_flow_outline_fortmat_loc(loc):
 
 EOF
 
-function! flow#outline_init(filename)
+function! flow_outline#init(filename)
   let l:outline = []
   let l:winwidth = winwidth(0)
-  let l:res = <SID>FlowClientCall('ast ' . a:filename, '2> /dev/null')
+  let l:res = flow#FlowClientCall('ast ' . a:filename, '2> /dev/null')
 python << EOF
 import vim
 import json
@@ -67,11 +65,11 @@ import json
 width = int(vim.eval('winwidth'), 10)
 node = json.loads(vim.eval('res'))
 
-for item in reversed(vim_flow_outline_process(node))
+for item in reversed(vim_flow_outline_process(node)):
   line = ' '.join(item.prefix + item.line)
   loc = vim_flow_outline_fortmat_loc(item.loc)
   space = ''.join(' ' for s in range(width - len(line) - len(loc) - 4))
-  vim.command("call add(l:outline, '%s')" % line)
+  vim.command("call add(l:outline, '%s%s%s')" % (line, space, loc))
 
 EOF
   return l:outline
@@ -119,4 +117,3 @@ endfunction
 
 " Commands
 command! FlowOutline call flow_outline#Outline()
-
