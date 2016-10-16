@@ -70,7 +70,7 @@ import json
 width = int(vim.eval('winwidth'), 10)
 node = json.loads(vim.eval('res'))
 
-for item in reversed(vim_flow_outline_process(node)):
+for item in vim_flow_outline_process(node):
   line = ' '.join(item.prefix + item.line)
   loc = vim_flow_outline_fortmat_loc(item.loc)
   space = ''.join(' ' for s in range(width - len(line) - len(loc) - 4))
