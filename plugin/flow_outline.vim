@@ -18,9 +18,11 @@ def vim_flow_outline_process(node):
       kind = 'import type' if node['importKind'] == 'type' else 'import'
       for spec in node['specifiers']:
         if spec['type'] == 'ImportDefaultSpecifier':
-          add('import', spec['loc'], prefix, kind, spec['id']['name'])
+          name = '%s from ...' % spec['id']['name']
+          add('import', spec['loc'], prefix, kind, name)
         elif spec['type'] == 'ImportSpecifier':
-          add('import', spec['loc'], prefix, kind, '{%s}' % spec['id']['name'])
+          name = '{%s} from ...' % spec['id']['name']
+          add('import', spec['loc'], prefix, kind, name)
     elif node['type'] == 'TypeAlias':
       add('type alias', node['loc'], prefix, 'type', node['id']['name'])
     elif node['type'] == 'ClassDeclaration':
@@ -60,7 +62,7 @@ EOF
 function! flow_outline#init(filename)
   let l:outline = []
   let l:winwidth = winwidth(0)
-  let l:res = flow#FlowClientCall('ast ' . a:filename, '2> /dev/null')
+  let l:res = flow#call('ast ' . a:filename, '2> /dev/null')
 python << EOF
 import vim
 import json
