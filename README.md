@@ -9,7 +9,7 @@ Outline view for a JS module based on CtrlP and FlowType
 If you use [vim-plug][]:
 
     Plug 'ctrlpvim/ctrlp.vim'
-    Plug 'andreypopp/vim-flow', { 'branch': 'expose-client-call' }
+    Plug 'flowtype/vim-flow'
     Plug 'andreypopp/vim-flow-outline'
 
 Then add a mapping:

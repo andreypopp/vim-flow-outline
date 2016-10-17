@@ -59,10 +59,44 @@ def vim_flow_outline_fortmat_loc(loc):
 
 EOF
 
+let s:flow_from = '--from vim'
+
+" Call wrapper for flow.
+" Borrowed from flowtype/vim-flow.
+function! <SID>FlowClientCall(cmd, suffix)
+  " Invoke typechecker.
+  " We also concatenate with the empty string because otherwise
+  " cgetexpr complains about not having a String argument, even though
+  " type(flow_result) == 1.
+  let command = g:flow#flowpath.' '.a:cmd.' '.s:flow_from.' '.a:suffix
+
+  let flow_result = system(command)
+
+  " Handle the server still initializing
+  if v:shell_error == 1
+    echohl WarningMsg
+    echomsg 'Flow server is still initializing...'
+    echohl None
+    cclose
+    return 0
+  endif
+
+  " Handle timeout
+  if v:shell_error == 3
+    echohl WarningMsg
+    echomsg 'Flow timed out, please try again!'
+    echohl None
+    cclose
+    return 0
+  endif
+
+  return flow_result
+endfunction
+
 function! flow_outline#init(filename)
   let l:outline = []
   let l:winwidth = winwidth(0)
-  let l:res = flow#call('ast ' . a:filename, '2> /dev/null')
+  let l:res = <SID>FlowClientCall('ast ' . a:filename, '2> /dev/null')
 python << EOF
 import vim
 import json
@@ -95,7 +129,7 @@ EOF
 endfunction
 
 function! flow_outline#id()
-	retu s:id
+  retu s:id
 endfunction
 
 "" CtrlP outline
