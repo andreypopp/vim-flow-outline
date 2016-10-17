@@ -37,10 +37,12 @@ def vim_flow_outline_process(node):
         name = 'static ' + name
       add('method', node['key']['loc'], prefix, name)
     elif node['type'] == 'FunctionDeclaration':
-      add('function', node['loc'], prefix, 'function', node['id']['name'] + '(...)')
+      if 'name' in node['id']:
+        add('function', node['loc'], prefix, 'function', node['id']['name'] + '(...)')
     elif node['type'] == 'VariableDeclaration':
       for dec in node['declarations']:
-        add('binding', node['loc'], prefix, node['kind'], dec['id']['name'] + ' = ...')
+        if 'name' in dec['id']:
+          add('binding', node['loc'], prefix, node['kind'], dec['id']['name'] + ' = ...')
     elif node['type'] == 'ExportDeclaration':
       if node['declaration']:
         process(node['declaration'], prefix=prefix + ['export'])
