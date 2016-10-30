@@ -1,3 +1,69 @@
+let s:fzf_loaded = exists('g:fzf#vim#default_layout')
+let s:ctrlp_loaded = exists('g:loaded_ctrlp')
+
+if !s:ctrlp_loaded && !s:fzf_loaded
+  finish
+endif
+
+if s:fzf_loaded
+
+  " ------------------------------------------------------------------
+  " FZF harness
+  " ------------------------------------------------------------------
+
+  let s:TYPE = {'dict': type({}), 'funcref': type(function('call'))}
+
+  function! s:get_color(attr, ...)
+    for group in a:000
+      let code = synIDattr(synIDtrans(hlID(group)), a:attr, 'cterm')
+      if code =~ '^[0-9]\+$'
+        return code
+      endif
+    endfor
+    return ''
+  endfunction
+
+  function! s:defaults()
+    let rules = copy(get(g:, 'fzf_colors', {}))
+    let colors = join(map(items(filter(map(rules, 'call("s:get_color", v:val)'), '!empty(v:val)')), 'join(v:val, ":")'), ',')
+    return empty(colors) ? '' : ('--color='.colors)
+  endfunction
+
+  function! s:wrap(name, opts, bang)
+    " fzf#wrap does not append --expect if sink or sink* is found
+    let opts = copy(a:opts)
+    if get(opts, 'options', '') !~ '--expect' && has_key(opts, 'sink*')
+      let Sink = remove(opts, 'sink*')
+      let wrapped = fzf#wrap(a:name, opts, a:bang)
+      let wrapped['sink*'] = Sink
+    else
+      let wrapped = fzf#wrap(a:name, opts, a:bang)
+    endif
+    return wrapped
+  endfunction
+
+  function! s:fzf(name, opts, extra)
+    let [extra, bang] = [{}, 0]
+    if len(a:extra) <= 1
+      let first = get(a:extra, 0, 0)
+      if type(first) == s:TYPE.dict
+        let extra = first
+      else
+        let bang = first
+      endif
+    elseif len(a:extra) == 2
+      let [extra, bang] = a:extra
+    else
+      throw 'invalid number of arguments'
+    endif
+
+    let eopts  = has_key(extra, 'options') ? remove(extra, 'options') : ''
+    let merged = extend(copy(a:opts), extra)
+    let merged.options = join(filter([s:defaults(), get(merged, 'options', ''), eopts], '!empty(v:val)'))
+    return fzf#run(s:wrap(a:name, merged, bang))
+  endfunction
+endif
+
 python << EOF
 import collections
 import re
@@ -95,7 +161,7 @@ function! <SID>FlowClientCall(cmd, suffix)
   return flow_result
 endfunction
 
-function! flow_outline#init(filename)
+function! flow_outline#get_outline(filename)
   let l:outline = []
   let l:winwidth = winwidth(0)
   let l:res = <SID>FlowClientCall('ast ' . a:filename, '2> /dev/null')
@@ -116,8 +182,7 @@ EOF
   return l:outline
 endfunction
 
-function! flow_outline#accept(mode, value)
-  call ctrlp#exit()
+function! flow_outline#accept(value)
 python << EOF
 import vim
 import re
@@ -130,29 +195,48 @@ if match is not None:
 EOF
 endfunction
 
-function! flow_outline#id()
-  retu s:id
-endfunction
+if s:ctrlp_loaded
 
-"" CtrlP outline
-cal add(g:ctrlp_ext_vars, {
-  \ 'init': 'flow_outline#init(s:crfile)',
-  \ 'accept': 'flow_outline#accept',
-  \ 'lname': 'outline',
-  \ 'sname': 'ml',
-  \ 'type': 'tabs',
-  \ 'sort': 0,
-  \ 'nolim': 1,
-  \ })
+  function! flow_outline#ctrlp_accept(mode, value)
+    call ctrlp#exit()
+    call flow_outline#accept(a:value)
+  endfunction
 
-let s:id = g:ctrlp_builtins + len(g:ctrlp_ext_vars)
+  function! flow_outline#ctrlp_id()
+    retu s:id
+  endfunction
 
-function! flow_outline#Outline()
-  if !exists('g:loaded_ctrlp')
-    echo "This function requires the CtrlP plugin to work"
-    " ctrl doesn't exist? Exiting.
-  else
-    call ctrlp#init(flow_outline#id())
+  "" CtrlP outline
+  cal add(g:ctrlp_ext_vars, {
+    \ 'init': 'flow_outline#get_outline(s:crfile)',
+    \ 'accept': 'flow_outline#accept',
+    \ 'lname': 'outline',
+    \ 'sname': 'ml',
+    \ 'type': 'tabs',
+    \ 'sort': 0,
+    \ 'nolim': 1,
+    \ })
+
+  let s:id = g:ctrlp_builtins + len(g:ctrlp_ext_vars)
+
+elseif s:fzf_loaded
+
+  function! flow_outline#fzf_accept(value)
+    call flow_outline#accept(a:value)
+  endfunction
+
+endif
+
+function! flow_outline#Outline(...)
+  if s:ctrlp_loaded
+    call ctrlp#init(flow_outline#ctrlp_id())
+  elseif s:fzf_loaded
+    let l:outline = flow_outline#get_outline(bufname('%'))
+    return s:fzf('fzf_merlin_outline', {
+    \ 'source':  l:outline,
+    \ 'sink':   function('g:flow_outline#fzf_accept'),
+    \ 'options': '+m -x --tiebreak=index --header-lines=0 --ansi -d "\t" -n 2,1..2 --prompt="FlowOutline> "',
+    \}, a:000)
   endif
 endfunction
 
