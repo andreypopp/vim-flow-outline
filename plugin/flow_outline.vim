@@ -87,7 +87,7 @@ def vim_flow_outline_process(node):
           name = '%s from ...' % spec['local']['name']
           add('import', spec['loc'], prefix, kind, name)
         elif spec['type'] == 'ImportSpecifier':
-          name = '{%s} from ...' % spec['id']['name']
+          name = '{%s} from ...' % spec['local']['name']
           add('import', spec['loc'], prefix, kind, name)
     elif node['type'] == 'TypeAlias':
       add('type alias', node['loc'], prefix, 'type', node['id']['name'])
