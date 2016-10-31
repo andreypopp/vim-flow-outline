@@ -84,7 +84,7 @@ def vim_flow_outline_process(node):
       kind = 'import type' if node['importKind'] == 'type' else 'import'
       for spec in node['specifiers']:
         if spec['type'] == 'ImportDefaultSpecifier':
-          name = '%s from ...' % spec['id']['name']
+          name = '%s from ...' % spec['local']['name']
           add('import', spec['loc'], prefix, kind, name)
         elif spec['type'] == 'ImportSpecifier':
           name = '{%s} from ...' % spec['id']['name']
@@ -109,7 +109,7 @@ def vim_flow_outline_process(node):
       for dec in node['declarations']:
         if 'name' in dec['id']:
           add('binding', node['loc'], prefix, node['kind'], dec['id']['name'] + ' = ...')
-    elif node['type'] == 'ExportDeclaration':
+    elif node['type'] == 'ExportNamedDeclaration':
       if node['declaration']:
         process(node['declaration'], prefix=prefix + ['export'])
 
